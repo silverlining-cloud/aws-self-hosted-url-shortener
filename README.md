@@ -1,5 +1,9 @@
 # aws-self-hosted-url-shortener
 
+## Infrastructure Diagram
+
+![Infrastructure Diagram](https://cdn.silverlining.cloud/cloudformation-url-shortener/aws-self-hosted-url-shortener-github.png)
+
 ## Feature Comparision
 
 | Feature                                           | Free IaaS | Paid IaaS | SaaS |
