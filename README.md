@@ -4,30 +4,19 @@
 
 | Feature                                           | Free IaaS | Paid IaaS | SaaS |
 |---------------------------------------------------|:---------:|:---------:|:----:|
-| **Generate short links through API and website**  |     x     |     x     |  x   |
-| Easily create short, shareable links using API or through a website interface. | | | |
-| **Remove and List existing short links**          |     x     |     x     |  x   |
-| Manage your links efficiently with options to delete and view all your short links. | | | |
-| **Serverless infrastructure**                     |     x     |     x     |  x   |
-| Leverage scalable and flexible serverless technology for efficient link management. | | | |
-| **Connect your own (sub-)domain**                 |     x     |     x     |  x   |
-| Enhance your branding by using a custom (sub-)domain for your short links. | | | |
-| **Secured by API key**                            |     x     |     x     |  x   |
-| Keep your link generation and management secure with API key authentication. | | | |
-| **Track link clicks**                             |           |     x     |  x   |
-| Gain insights by tracking how often and by whom links were clicked. | | | |
-| **Short URL customization**                       |           |     x     |  x   |
-| Create personalized short URLs by customizing the URL slugs or adjusting the slug length, making your links more memorable and aligned with your brand identity. | | | |
-| **Link expiration by time and clicks**            |           |     x     |  x   |
-| Set expiration rules for your links based on time duration or click limits. | | | |
-| **Commercial Use**                                |           |     x     |  x   |
-| Ideal for businesses with advanced needs, supporting commercial use of short links. | | | |
-| **Support via live chat and email**               |           |     x     |  x   |
-| Get prompt help and support through live chat and email, ensuring smooth operations. | | | |
-| **No infrastructure setup required**              |           |           |  x   |
-| Simplify operations with no need to manage infrastructure; we handle it all. | | | |
-| **Pay-as-you-go pricing**                         |           |           |  x   |
-| Only pay for the links you create, with no additional costs, offering a cost-effective solution. | | | |
+| **Generate short links through API and website**  <br> Easily create short, shareable links using API or through a website interface. |     x     |     x     |  x   |
+| **Remove and List existing short links**          <br> Manage your links efficiently with options to delete and view all your short links. |     x     |     x     |  x   |
+| **Serverless infrastructure**                     <br> Leverage scalable and flexible serverless technology for efficient link management. |     x     |     x     |  x   |
+| **Connect your own (sub-)domain**                 <br> Enhance your branding by using a custom (sub-)domain for your short links. |     x     |     x     |  x   |
+| **Secured by API key**                            <br> Keep your link generation and management secure with API key authentication. |     x     |     x     |  x   |
+| **Track link clicks**                             <br> Gain insights by tracking how often and by whom links were clicked. |           |     x     |  x   |
+| **Short URL customization**                       <br> Create personalized short URLs by customizing the URL slugs or adjusting the slug length, making your links more memorable and aligned with your brand identity. |           |     x     |  x   |
+| **Link expiration by time and clicks**            <br> Set expiration rules for your links based on time duration or click limits. |           |     x     |  x   |
+| **Commercial Use**                                <br> Ideal for businesses with advanced needs, supporting commercial use of short links. |           |     x     |  x   |
+| **Support via live chat and email**               <br> Get prompt help and support through live chat and email, ensuring smooth operations. |           |     x     |  x   |
+| **No infrastructure setup required**              <br> Simplify operations with no need to manage infrastructure; we handle it all. |           |           |  x   |
+| **Pay-as-you-go pricing**                         <br> Only pay for the links you create, with no additional costs, offering a cost-effective solution. |           |           |  x   |
+
 
 
 ## License
