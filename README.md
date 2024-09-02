@@ -22,7 +22,7 @@
     aws cloudformation create-stack --stack-name <STACK_NAME> --template-url https://<YOUR_BUCKET_NAME>.s3.amazonaws.com/templates/template.yaml --capabilities CAPABILITY_NAMED_IAM --region <REGION>
     ```
 
-**Demo Deployment
+**Demo Deployment**
 
 You can explore a demo deployment of the paid commercial version at [self.aws3-demo.link](https://self.aws3-demo.link). Use the following API key to access it:
 
