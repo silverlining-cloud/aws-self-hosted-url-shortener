@@ -4,6 +4,30 @@
 
 ![Infrastructure Diagram](https://cdn.silverlining.cloud/cloudformation-url-shortener/aws-self-hosted-url-shortener-github.png)
 
+## Deployment
+
+1. **Install the AWS CLI**: To deploy this CloudFormation stack, you need to have the AWS CLI installed. Follow the [AWS CLI installation guide](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) for instructions.
+
+2. **Download the Template**: Download the `template.yaml` file from this repository.
+
+3. **Upload the Template to S3**: Since the template is large, AWS requires it to be uploaded to an S3 bucket before deployment. Use the following command to upload it:
+
+    ```bash
+    aws s3 cp template.yaml s3://<YOUR_BUCKET_NAME>/templates/template.yaml
+    ```
+
+4. **Deploy the Stack**: Run the following command to deploy the stack using CloudFormation:
+
+    ```bash
+    aws cloudformation create-stack --stack-name <STACK_NAME> --template-url https://<YOUR_BUCKET_NAME>.s3.amazonaws.com/templates/template.yaml --capabilities CAPABILITY_NAMED_IAM --region <REGION>
+    ```
+
+**Demo Deployment
+
+You can explore a demo deployment of the paid commercial version at [self.aws3-demo.link](https://self.aws3-demo.link). Use the following API key to access it:
+
+**API Key**: `7DRpNbuO5e8Tk37WiJmjB4ILH8kkYcOF7l6eldD5`
+
 ## Commercial Version
 
 ### Paid Version
@@ -14,7 +38,7 @@ In addition to our free Infrastructure-as-a-Service (IaaS) stack, we offer a pai
 - **Link Expiration**: Set links to expire after a certain time or after a specified number of clicks.
 - **Click Tracking**: Monitor who clicked your links and when they were clicked.
 
-Purchase our paid version directly from the AWS Marketplace: [AWS Marketplace - Paid Version](https://aws.amazon.com/marketplace/pp/prodview-y3fqwgluejol6)
+Purchase our paid version directly from the AWS Marketplace and deploy it: [AWS Marketplace - Paid Version](https://aws.amazon.com/marketplace/pp/prodview-y3fqwgluejol6)
 
 ### Software as a Service (SaaS)
 
