@@ -1,4 +1,7 @@
-# aws-self-hosted-url-shortener
+# AWS Self-Hosted URL Shortener
+
+### Introduction
+This AWS CloudFormation template deploys a serverless URL Shortener. It provides both a website and API endpoints to convert long URLs into short, manageable ones. The application stack leverages AWS S3 for static website hosting with object-level URL redirection. Access to the entire application is provided via a CloudFront distribution, which can be easily configured to work with your own domain. Being fully serverless, the stack automatically scales up and down based on demand, ensuring you only pay for the resources you actually use. The entire application is defined in a single `template.yaml` file, making it very easy and straightforward to deploy.
 
 ## Infrastructure Diagram
 
