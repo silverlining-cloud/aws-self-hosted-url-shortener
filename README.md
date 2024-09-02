@@ -1,14 +1,28 @@
 # AWS Self-Hosted URL Shortener
 
-### Introduction
+## Table of Contents
+1. [Introduction](#introduction)
+2. [Infrastructure Diagram](#infrastructure-diagram)
+3. [Deployment](#deployment)
+   - [Install the AWS CLI](#install-the-aws-cli)
+   - [Download the Template](#download-the-template)
+   - [Upload the Template to S3](#upload-the-template-to-s3)
+   - [Deploy the Stack](#deploy-the-stack)
+4. [Demo Deployment](#demo-deployment)
+5. [Commercial Version](#commercial-version)
+   - [Paid Version](#paid-version)
+   - [Software as a Service (SaaS)](#software-as-a-service-saas)
+6. [Feature Comparison](#feature-comparison)
+7. [License](#license)
+
+
+## Introduction
 This AWS CloudFormation template deploys a serverless URL Shortener. It provides both a website and API endpoints to convert long URLs into short, manageable ones. The application stack leverages AWS S3 for static website hosting with object-level URL redirection. Access to the entire application is provided via a CloudFront distribution, which can be easily configured to work with your own domain. Being fully serverless, the stack automatically scales up and down based on demand, ensuring you only pay for the resources you actually use. The entire application is defined in a single `template.yaml` file, making it very easy and straightforward to deploy.
 
 ## Infrastructure Diagram
-
 ![Infrastructure Diagram](https://cdn.silverlining.cloud/cloudformation-url-shortener/aws-self-hosted-url-shortener-github.png)
 
 ## Deployment
-
 1. **Install the AWS CLI**: To deploy this CloudFormation stack, you need to have the AWS CLI installed. Follow the [AWS CLI installation guide](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) for instructions.
 
 2. **Download the Template**: Download the `template.yaml` file from this repository.
@@ -26,14 +40,12 @@ This AWS CloudFormation template deploys a serverless URL Shortener. It provides
     ```
 
 **Demo Deployment**
-
 You can explore a demo deployment of the paid commercial version at [self.aws3-demo.link](https://self.aws3-demo.link). Use the following API key to access it:
 
 **API Key**: `7DRpNbuO5e8Tk37WiJmjB4ILH8kkYcOF7l6eldD5`
 ![Demo Image](https://cdn.silverlining.cloud/cloudformation-url-shortener/aws3-self-hosted.png)
 
 ## Commercial Version
-
 ### Paid Version
 
 In addition to our free Infrastructure-as-a-Service (IaaS) stack, we offer a paid version that includes enhanced features such as:
@@ -51,7 +63,6 @@ Avoid the hassle of hosting by using our SaaS URL Shortener service. Our fully P
 Subscribe now: [AWS Marketplace - SaaS URL Shortener](https://aws.amazon.com/marketplace/pp/prodview-aduakv5eklenq)
 
 ## Feature Comparision
-
 | Feature                                           | Free IaaS | Paid IaaS | SaaS |
 |---------------------------------------------------|:---------:|:---------:|:----:|
 | **Generate short links through API and website**  <br> Easily create short, shareable links using API or through a website interface. |     ✔     |     ✔     |  ✔   |
@@ -67,11 +78,7 @@ Subscribe now: [AWS Marketplace - SaaS URL Shortener](https://aws.amazon.com/mar
 | **No infrastructure setup required**              <br> Simplify operations with no need to manage infrastructure; we handle it all. |           |           |  ✔   |
 | **Pay-as-you-go pricing**                         <br> Only pay for the links you create, with no additional costs, offering a cost-effective solution. |           |           |  ✔   |
 
-
-
-
 ## License
-
 This CloudFormation template is made available under a dual-license. You can use this free template, licensed under the GPL-3.0 license, to integrate the URL Shortener into your open-source, non-commercial project. If you want to use this CloudFormation template in a closed-source and/or commercial project, you will need to purchase our paid version [here](https://aws.amazon.com/marketplace/pp/prodview-y3fqwgluejol6).
 
 By purchasing a commercial license, you not only gain access to all features and enterprise-level support, either via our live chat on our website or via email, but you also support the future development of this project.
