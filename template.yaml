@@ -1,0 +1,798 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: URL Shortener Website and API (qs-000000000)
+
+Resources:
+  WebsiteBucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      BucketName: !Sub 'url-shortener-website-${AWS::AccountId}'
+      WebsiteConfiguration: 
+        IndexDocument: 'index.html'
+        ErrorDocument: 'error.html'
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        IgnorePublicAcls: false
+        BlockPublicPolicy: false
+        RestrictPublicBuckets: false
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: ObjectWriter
+
+  LambdaExecutionRoleTemp:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: 'lambda.amazonaws.com'
+            Action: 'sts:AssumeRole'
+      Policies:
+        - PolicyName: 'S3AccessPolicy'
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 's3:PutObject'
+                  - 's3:PutBucketNotification'
+                  - s3:PutBucketPolicy
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !Sub 'arn:${AWS::Partition}:logs:*:*:*'
+                  - !Sub 'arn:${AWS::Partition}:s3:::url-shortener-website-${AWS::AccountId}/*'
+                  - !Sub 'arn:${AWS::Partition}:s3:::url-shortener-website-${AWS::AccountId}'
+
+
+  LambdaFunction:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Handler: 'index.handler'
+      FunctionName: 'UrlShortenerCustomResource'
+      Role: !GetAtt LambdaExecutionRoleTemp.Arn
+      Code:
+        ZipFile:
+          Fn::Join: ["\n", [
+            "import json",
+            "import boto3",
+            "import cfnresponse",
+            "def handler(event, context):",
+            "    if event['RequestType'] == 'Create':",
+            "        try:",
+            "            s3 = boto3.client('s3')",
+            "            bucket_name = event['ResourceProperties']['BucketName']",
+            "            bucket_policy = {",
+            "                \"Version\": \"2012-10-17\",",
+            "                \"Statement\": [",
+            "                    {",
+            "                        \"Sid\": \"PublicRead\",",
+            "                        \"Effect\": \"Allow\",",
+            "                        \"Principal\": \"*\",",
+            "                        \"Action\": \"s3:GetObject\",",
+            "                        \"Resource\": f\"arn:aws:s3:::{bucket_name}/*\"",
+            "                    }",
+            "                ]",
+            "            }",
+            "            s3.put_bucket_policy(",
+            "                Bucket=bucket_name,",
+            "                Policy=json.dumps(bucket_policy)",
+            "            )",
+            "            api_url = event['ResourceProperties']['ApiUrl']",
+            "            api_url_remove = event['ResourceProperties']['ApiUrlRemove']",
+            "            api_url_list = event['ResourceProperties']['ApiUrlList']",
+            "            error_content = '''<!DOCTYPE html><html lang=\"en\" class=\"page-404\"><head><meta charset=\"utf-8\"><meta content=\"width=device-width, initial-scale=1.0\" name=\"viewport\"><title>Self hosted URL Shortener</title><link rel=\"stylesheet\" href=\"cover.css\"><link rel=\"icon\" href=\"https://s3.amazonaws.com/cdn.silverlining.cloud/logos/Round_Dark.svg\" type=\"image/svg+xml\"></head><body class=\"page-404\"><div class=\"background-wrapper\"><h1 id=\"visual\">404</h1></div><p>The page you’re looking for does not exist.</p><script> const visual = document.getElementById(\"visual\") const events = [\"resize\", \"load\"] events.forEach(function (e) { window.addEventListener(e, function () { const width = window.innerWidth const height = window.innerHeight const ratio = 45 / (width / height) visual.style.transform = \"translate(-50%, -50%) rotate(-\" + ratio + \"deg)\" }); }); </script></body></html>'''",
+            "            s3.put_object(Bucket=bucket_name, Key='error.html', Body=error_content, ContentType='text/html')",
+            "            css_content = '''@import url(\"https://fonts.googleapis.com/css?family=Eczar:800\");@import url(\"https://fonts.googleapis.com/css?family=Poppins:600\");body{font-family:\"Poppins\";background-attachment:fixed;}.page-404 body{background:#121212;overflow:hidden;}.page-404 h1{position:absolute;top:50%;left:50%;transform:translate(-50%, -50%) rotate(-45deg);font-family:\"Eczar\";font-size:60vmax;color:#484848;letter-spacing:0.025em;margin:0;transition:750ms ease-in-out;}.page-404 svg > polyline{transition:150ms;}.page-404 a:hover{color:#333;background:#dadada;border-color:transparent;}.page-404 svg > polyline{stroke:#000;}.page-404 + .background-wrapper > h1{color:#dadada;}.page-404 p{color:#dadada;font-size:calc(1em + 3vmin);position:fixed;bottom:1rem;right:1.5rem;margin:0;text-align:right;text-shadow:-1px -1px 0 #121212, 1px 1px 0 #121212, -1px 1px 0 #121212, 1px -1px 0 #121212;}a, a:focus, a:hover{color:#fff;}.btn-secondary, .btn-secondary:hover, .btn-secondary:focus{color:#333;text-shadow:none;background-color:#fff;border:.05rem solid #fff;margin-top:20px;}html, body{background-color:#333;background-attachment:fixed;}body{display:flex;justify-content:center;color:#fff;text-shadow:-0.1rem -0.1rem 0.1rem rgba(18, 18, 18, 1);box-shadow:inset 0rem -6rem 20rem rgba(244, 244, 246, .1);}.cover-container{max-width:70em;display:flex;flex-direction:column;align-items:center;padding:1rem;}.masthead{margin-bottom:2rem;}.nav-masthead .nav-link{padding:.25rem 0;font-weight:700;color:rgba(255, 255, 255, .5);background-color:transparent;border-bottom:.25rem solid transparent;}.nav-masthead .nav-link:hover, .nav-masthead .nav-link:focus{border-bottom-color:rgba(255, 255, 255, .25);}.nav-masthead .nav-link{margin-left:.5rem;margin-right:.5rem;}.nav-masthead .active{color:#fff;border-bottom-color:#fff;}@media (min-width:48em){.nav-masthead{justify-content:center;}}.form-control{margin-bottom:.5rem;}.cover{padding:0 1.5rem;}.cover .btn-lg{padding:.75rem 1.25rem;font-weight:700;}.parameter-label{float:none;text-align:left;width:100%;}.optional-label{padding-top:1em;margin-bottom:-3px;}.lead{margin:1.5em 0;}.cover-heading{margin-top:1.5em;}.response-div{padding-top:1em;padding-bottom:2em;}.mastfoot p{margin:-1px;}.spinner-border{margin-bottom:5px;}.mastfoot{color:rgba(255, 255, 255, .7);}@media (max-width:768px){.nav-masthead{flex-direction:column;}.nav-masthead .nav-link{margin-bottom:0.5rem;margin-left:0;}.parameters{margin:1rem;}.cover-container{padding:1rem;}.optional-label{padding:20px;}.mastfoot p{padding:10px;}.inner-cover{max-width:400px;}}.form-group{max-width:600px;margin:0 auto;}.table-container{padding:20px;background-color:#fff;border-radius:8px;box-shadow:0 0 10px rgba(0, 0, 0, 0.1);margin-top:20px;font-family:\"Poppins\", sans-serif;text-shadow:none;}.table-responsive{width:100%;overflow-x:auto;}.table-responsive table{width:100%;min-width:600px;}table{font-size:1rem;width:100%;border-collapse:collapse;}th, td{text-align:center;padding:10px;color:#333;}th{background-color:#f1f1f1;font-weight:bold;}td{background-color:#fafafa;font-family:\"Poppins\", sans-serif;}.pagination{display:flex;justify-content:center;padding:1em;}.pagination .page-item .page-link{color:#333;background-color:#fff;border:1px solid #ddd;margin:0 5px;padding:0.5em 0.75em;border-radius:4px;font-family:\"Poppins\", sans-serif;}.pagination .page-item.active .page-link{background-color:#333;color:#fff;border:1px solid #333;}.pagination .page-item .page-link:hover{background-color:#f1f1f1;color:#333;border-color:#ccc;}.pagination .page-item.disabled .page-link{background-color:#e9ecef;color:#6c757d;border-color:#dee2e6;}'''",
+            "            s3.put_object(Bucket=bucket_name, Key='cover.css', Body=css_content, ContentType='text/css')",
+            "            index_content = '''<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1, shrink-to-fit=no\"><meta name=\"description\" content=\"Effortlessly shorten your URLs with our serverless, self-hosted solution on Amazon Web Services.\"><meta name=\"author\" content=\"SilverLining.Cloud\"><title>Self-Hosted URL Shortener</title><link href=\"https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css\" rel=\"stylesheet\"><link href=\"cover.css\" rel=\"stylesheet\"><link rel=\"icon\" href=\"https://s3.amazonaws.com/cdn.silverlining.cloud/logos/Round_Dark.svg\" type=\"image/svg+xml\"></head><body class=\"text-center\"><div class=\"cover-container d-flex h-100 p-3 mx-auto flex-column align-items-center\"><header class=\"masthead mb-auto\"><div class=\"inner\"><nav class=\"nav nav-masthead justify-content-center\"><a class=\"nav-link active\" href=\"index.html\" title=\"Shorten URLs\">Shorten</a><a class=\"nav-link\" href=\"remove.html\" title=\"Remove Shortened URLs\">Remove</a><a class=\"nav-link\" href=\"list.html\" title=\"List Shortened URLs\">List</a><a class=\"nav-link\" href=\"track.html\" title=\"Track URL Analytics\">Track</a></nav></div></header><main role=\"main\" class=\"inner cover\"><h1 class=\"cover-heading\">Self-Hosted URL Shortener API</h1><p class=\"lead\">Effortlessly shorten your URLs with our serverless, self-hosted solution on Amazon Web Services. Enjoy seamless 1-click deployment directly in your own AWS Account.</p><form class=\"parameters text-center\"><div class=\"form-group\"><label for=\"inputUrl\" class=\"parameter-label\">Long URL to Shorten:</label><input type=\"url\" class=\"form-control\" id=\"inputUrl\" aria-describedby=\"inputUrl\" placeholder=\"Example: https://www.silverlining.cloud/docs/aws/aws3\" required></div><div class=\"form-group\"><label for=\"inputPassword\" class=\"parameter-label\">API Key:</label><input type=\"password\" class=\"form-control\" id=\"inputPassword\" placeholder=\"Enter your API Key\" required></div><div class=\"form-group\"><p class=\"optional-label\">Optional Parameters</p><label for=\"inputExpiration\" class=\"parameter-label\">URL Expiration (in hours):</label><input type=\"number\" class=\"form-control\" id=\"inputExpiration\" placeholder=\"Upgrade to the paid version to access additional URL modification features.\" disabled></div><div class=\"form-group\"><label for=\"inputExpirationClicks\" class=\"parameter-label\">URL Expiration (after x clicks):</label><input type=\"number\" class=\"form-control\" id=\"inputExpirationClicks\" placeholder=\"Upgrade to the paid version to access additional URL modification features.\" disabled></div><div class=\"form-group\"><label for=\"inputLength\" class=\"parameter-label\">Slug Length (4-8 characters):</label><input type=\"text\" class=\"form-control\" id=\"inputLength\" placeholder=\"Upgrade to the paid version to access additional URL modification features.\" disabled></div><div class=\"form-group\"><label for=\"inputSlug\" class=\"parameter-label\">Custom URL Slug:</label><input type=\"text\" class=\"form-control\" id=\"inputSlug\" placeholder=\"Upgrade to the paid version to access additional URL modification features.\" disabled></div><button type=\"submit\" class=\"btn btn-lg btn-secondary\" id=\"submit-button\">Generate Short URL</button></form><div class=\"response-div\" id=\"response-box\"></div></main><footer class=\"mastfoot mt-auto\"><div class=\"inner\"><p><a href=\"https://aws.amazon.com/marketplace/pp/prodview-y3fqwgluejol6\" title=\"Documentation\" target=\"_blank\">Upgrade</a> to deploy a fully-featured URL shortener.</p><p>Self-Hosted URL Shortener by <a href=\"https://silverlining.cloud\" title=\"Visit SilverLining.Cloud\" target=\"_blank\">SilverLining.Cloud</a></p></div></footer></div><script src=\"https://code.jquery.com/jquery-3.3.1.min.js\" crossorigin=\"anonymous\"></script><script src=\"https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js\" crossorigin=\"anonymous\"></script><script src=\"https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js\" crossorigin=\"anonymous\"></script><script> var api_url = \"''' + api_url + '''\"; $(document).ready(function() { $(\"form\").submit(function(event) { $(\"#submit-button\").html(`<span class=\"spinner-border spinner-border-sm\" role=\"status\" aria-hidden=\"true\"></span> Generating Short URL...`); event.preventDefault(); var url = $(\"#inputUrl\").val(); var password = $(\"#inputPassword\").val(); var data = { \"longUrl\": url }; var settings = { \"url\": api_url, \"method\": \"POST\", \"timeout\": 0, \"headers\": { \"Content-Type\": \"application/json\", \"X-Api-Key\": password, }, \"data\": JSON.stringify(data), }; $.ajax(settings).done(function (response) { if (response.shortUrl) { $(\"#response-box\").html(`<p>Your shortened URL is: <a href=\"https://${response.shortUrl}\" target=\"_blank\">${response.shortUrl}</a></p>`); } else { $(\"#response-box\").html(`<p>Something went wrong. Please try again.</p>`); } $(\"#submit-button\").html(\"Generate Short URL\"); }).fail(function (jqXHR, textStatus, errorThrown) { if (jqXHR.status === 0) { $(\"#response-box\").html(`<p>API Request Failed: The API key might be incorrect, the usage quota may be exceeded, or there could be other issues.</p>`); } else if (jqXHR.status === 404) { $(\"#response-box\").html(`<p>Requested page not found (404).</p>`); } else if (jqXHR.status === 500) { let errorMessage = \"Internal Server Error (500)\"; try { errorMessage = JSON.parse(jqXHR.responseText).message; } catch (error) { console.error(\"Error parsing JSON response:\", error); } $(\"#response-box\").html(`<p>${errorMessage}</p>`); } else if (textStatus === \"parsererror\") { $(\"#response-box\").html(`<p>Requested JSON parse failed.</p>`); } else if (textStatus === \"timeout\") { $(\"#response-box\").html(`<p>Time out error.</p>`); } else if (textStatus === \"abort\") { $(\"#response-box\").html(`<p>Ajax request aborted.</p>`); } else { $(\"#response-box\").html(`<p>Error: ${jqXHR.status}, ${errorThrown}. Please check the console for more details.</p>`); } $(\"#submit-button\").html(\"Generate Short URL\"); }); }); }); </script></body></html>'''",
+            "            s3.put_object(Bucket=bucket_name, Key='index.html', Body=index_content, ContentType='text/html')",
+            "            remove_content = '''<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1, shrink-to-fit=no\"><meta name=\"description\" content=\"Easily remove shortened URLs with our serverless, self-hosted solution on Amazon Web Services.\"><meta name=\"author\" content=\"SilverLining.Cloud\"><title>Self-Hosted URL Shortener</title><link href=\"https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css\" rel=\"stylesheet\"><link href=\"cover.css\" rel=\"stylesheet\"><link rel=\"icon\" href=\"https://s3.amazonaws.com/cdn.silverlining.cloud/logos/Round_Dark.svg\" type=\"image/svg+xml\"></head><body class=\"text-center\"><div class=\"cover-container d-flex h-100 p-3 mx-auto flex-column\"><header class=\"masthead mb-auto\"><div class=\"inner\"><nav class=\"nav nav-masthead justify-content-center\"><a class=\"nav-link\" href=\"index.html\">Shorten</a><a class=\"nav-link active\" href=\"remove.html\">Remove</a><a class=\"nav-link\" href=\"list.html\">List</a><a class=\"nav-link\" href=\"track.html\">Track</a></nav></div></header><main role=\"main\" class=\"inner cover\"><h1 class=\"cover-heading\">Remove URL</h1><p class=\"lead\">Remove a shortened URL by entering its URL slug below. The slug is the last part of your URL after the slash (\"/\"). For example, enter \"abcdef\" to remove \"shorten.silverlining.cloud/abcdef\".</p><form class=\"parameters text-center\"><div class=\"form-group\"><label for=\"inputSlug\" class=\"parameter-label\">Enter URL Slug to Remove URL:</label><input type=\"text\" class=\"form-control\" id=\"inputSlug\" aria-describedby=\"inputSlug\" placeholder=\"Example: abcdef when deleting shorten.silverlining.cloud/abcdef\" required></div><div class=\"form-group\"><label for=\"inputPassword\" class=\"parameter-label\">API Key:</label><input type=\"password\" class=\"form-control\" id=\"inputPassword\" placeholder=\"Enter your API Key\" required></div><button type=\"submit\" class=\"btn btn-lg btn-secondary\" id=\"submit-button\">Remove Short URL</button></form><div class=\"response-div\" id=\"response-box\"></div></main><footer class=\"mastfoot mt-auto\"><div class=\"inner\"><p><a href=\"https://aws.amazon.com/marketplace/pp/prodview-y3fqwgluejol6\" title=\"Documentation\" target=\"_blank\">Upgrade</a> to deploy a fully-featured URL shortener.</p><p>Self-Hosted URL Shortener by <a href=\"https://silverlining.cloud\" target=\"_blank\">SilverLining.Cloud</a></p></div></footer></div><script src=\"https://code.jquery.com/jquery-3.3.1.min.js\" crossorigin=\"anonymous\"></script><script src=\"https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js\" crossorigin=\"anonymous\"></script><script src=\"https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js\" crossorigin=\"anonymous\"></script><script> var api_url = \"''' + api_url_remove + '''\"; $(document).ready(function() { $(\"form\").submit(function(event) { $(\"#submit-button\").html(`<span class=\"spinner-border spinner-border-sm\" role=\"status\" aria-hidden=\"true\"></span> Removing Short URL...`); event.preventDefault(); var key = $(\"#inputSlug\").val(); var password = $(\"#inputPassword\").val(); var data = { \"slug\": key }; var settings = { \"url\": api_url, \"method\": \"POST\", \"timeout\": 0, \"headers\": { \"Content-Type\": \"application/json\", \"X-Api-Key\": password, }, \"data\": JSON.stringify(data), }; $.ajax(settings).done(function (response) { if (response.message) { $(\"#response-box\").html(`<p>${response.message}</p>`); } else { $(\"#response-box\").html(`<p>Something went wrong. Please try again.</p>`); } $(\"#submit-button\").html(\"Remove Short URL\"); }).fail(function (jqXHR, textStatus, errorThrown) { if (jqXHR.status === 0) { $(\"#response-box\").html(`<p>API Request Failed: The API key might be incorrect, the usage quota may be exceeded, or there could be other issues.</p>`); } else if (jqXHR.status === 404) { $(\"#response-box\").html(`<p>Requested page not found (404).</p>`); } else if (jqXHR.status === 500) { let errorMessage = \"Internal Server Error (500)\"; try { errorMessage = JSON.parse(jqXHR.responseText).message; } catch (error) { console.error(\"Error parsing JSON response:\", error); } $(\"#response-box\").html(`<p>${errorMessage}</p>`); } else if (textStatus === \"parsererror\") { $(\"#response-box\").html(`<p>Requested JSON parse failed.</p>`); } else if (textStatus === \"timeout\") { $(\"#response-box\").html(`<p>Time out error.</p>`); } else if (textStatus === \"abort\") { $(\"#response-box\").html(`<p>Ajax request aborted.</p>`); } else { $(\"#response-box\").html(`<p>Error: ${jqXHR.status}, ${errorThrown}. Please check the console for more details.</p>`); } if (jqXHR.status === 0 && jqXHR.readyState === 0) { $(\"#response-box\").html(`<p>Something went wrong. Please try again.</p>`); } $(\"#submit-button\").html(\"Remove Short URL\"); }); }); }); </script></body></html>'''",
+            "            s3.put_object(Bucket=bucket_name, Key='remove.html', Body=remove_content, ContentType='text/html')",
+            "            list_content = '''<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1, shrink-to-fit=no\"><meta name=\"description\" content=\"View a list of all your shortened URLs with our serverless, self-hosted solution on Amazon Web Services.\"><meta name=\"author\" content=\"SilverLining.Cloud\"><title>Self-Hosted URL Shortener</title><link href=\"https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css\" rel=\"stylesheet\"><link href=\"cover.css\" rel=\"stylesheet\"><link rel=\"icon\" href=\"https://s3.amazonaws.com/cdn.silverlining.cloud/logos/Round_Dark.svg\" type=\"image/svg+xml\"><link rel=\"stylesheet\" href=\"https://cdn.datatables.net/1.10.21/css/jquery.dataTables.min.css\"><link rel=\"stylesheet\" href=\"https://cdn.datatables.net/1.10.21/css/dataTables.bootstrap4.min.css\"></head><body class=\"text-center\"><div class=\"cover-container d-flex h-100 p-3 mx-auto flex-column\"><header class=\"masthead mb-auto\"><div class=\"inner\"><nav class=\"nav nav-masthead justify-content-center\"><a class=\"nav-link\" href=\"index.html\">Shorten</a><a class=\"nav-link\" href=\"remove.html\">Remove</a><a class=\"nav-link active\" href=\"list.html\">List</a><a class=\"nav-link\" href=\"track.html\">Track</a></nav></div></header><main role=\"main\" class=\"inner-cover\"><h1 class=\"cover-heading\">List URLs</h1><p class=\"lead\">View a list of all your shortened URLs.</p><form class=\"parameters text-center\"><div class=\"form-group\"><label for=\"inputPassword\" class=\"parameter-label\">API Key:</label><input type=\"password\" class=\"form-control\" id=\"inputPassword\" placeholder=\"Enter your API Key\" required></div><button type=\"submit\" class=\"btn btn-lg btn-secondary\" id=\"submit-button\">List Short URLs</button></form><div class=\"response-div\" id=\"response-box\"></div></main><footer class=\"mastfoot mt-auto\"><div class=\"inner\"><p><a href=\"https://aws.amazon.com/marketplace/pp/prodview-y3fqwgluejol6\" title=\"Documentation\" target=\"_blank\">Upgrade</a> to deploy a fully-featured URL shortener.</p><p>Self-Hosted URL Shortener by <a href=\"https://silverlining.cloud\" target=\"_blank\">SilverLining.Cloud</a></p></div></footer></div><script src=\"https://code.jquery.com/jquery-3.3.1.min.js\" crossorigin=\"anonymous\"></script><script src=\"https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js\" crossorigin=\"anonymous\"></script><script src=\"https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js\" crossorigin=\"anonymous\"></script><script src=\"https://cdn.datatables.net/1.10.21/js/jquery.dataTables.min.js\"></script><script src=\"https://cdn.datatables.net/1.10.21/js/dataTables.bootstrap4.min.js\"></script><script> var api_url = \"''' + api_url_list + '''\"; $(document).ready(function() { $(\"form\").submit(function(event) { $(\"#submit-button\").html(`<span class=\"spinner-border spinner-border-sm\" role=\"status\" aria-hidden=\"true\"></span> Listing Short URLs...`); event.preventDefault(); var password = $(\"#inputPassword\").val(); var settings = { \"url\": api_url, \"method\": \"POST\", \"timeout\": 0, \"headers\": { \"Content-Type\": \"application/json\", \"X-Api-Key\": password, }, }; $.ajax(settings).done(function (response) { var data = response; data.items.forEach(function(item) { if (item.expiration) { var date = new Date(item.expiration * 1000); item.expiration = date.toLocaleString(); } }); if (data.items) { $(\"#response-box\").html(` <div class=\"table-container\"><div class=\"table-responsive\"><table id=\"urls-table\" class=\"table table-striped table-bordered\"><thead><tr><th>Short URL Slug</th><th>Long URL</th><th>Date Created</th></tr></thead><tbody></tbody></table></div></div> `); var table = $(\"#urls-table\").DataTable({ \"columns\": [ { \"data\": \"slug\" }, { \"data\": \"longUrl\" }, { \"data\": \"timeCreated\" }, ], \"data\": data.items }); } else { $(\"#response-box\").html(`<p>Something went wrong. Please try again.</p>`); } $(\"#submit-button\").html(\"List Short URLs\"); }).fail(function (jqXHR, textStatus, errorThrown) { if (jqXHR.status === 0) { $(\"#response-box\").html(`<p>API Request Failed: The API key might be incorrect, the usage quota may be exceeded, or there could be other issues.</p>`); } else if (jqXHR.status === 404) { $(\"#response-box\").html(`<p>Requested page not found (404).</p>`); } else if (jqXHR.status === 500) { let errorMessage = \"Internal Server Error (500)\"; try { errorMessage = JSON.parse(jqXHR.responseText).message; } catch (error) { console.error(\"Error parsing JSON response:\", error); } $(\"#response-box\").html(`<p>${errorMessage}</p>`); } else if (textStatus === \"parsererror\") { $(\"#response-box\").html(`<p>Requested JSON parse failed.</p>`); } else if (textStatus === \"timeout\") { $(\"#response-box\").html(`<p>Time out error.</p>`); } else if (textStatus === \"abort\") { $(\"#response-box\").html(`<p>Ajax request aborted.</p>`); } else { $(\"#response-box\").html(`<p>Error: ${jqXHR.status}, ${errorThrown}. Please check the console for more details.</p>`); } if (jqXHR.status === 0 && jqXHR.readyState === 0) { $(\"#response-box\").html(`<p>Something went wrong. Please try again.</p>`); } $(\"#submit-button\").html(\"List Short URLs\"); }); }); }); </script></body></html>'''",
+            "            s3.put_object(Bucket=bucket_name, Key='list.html', Body=list_content, ContentType='text/html')",
+            "            track_content = '''<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1, shrink-to-fit=no\"><meta name=\"description\" content=\"Track usage statistics of your shortened URLs with our serverless, self-hosted solution on Amazon Web Services.\"><meta name=\"author\" content=\"SilverLining.Cloud\"><title>Self-Hosted URL Shortener</title><link href=\"https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css\" rel=\"stylesheet\"><link href=\"cover.css\" rel=\"stylesheet\"><link rel=\"icon\" href=\"https://s3.amazonaws.com/cdn.silverlining.cloud/logos/Round_Dark.svg\" type=\"image/svg+xml\"><link rel=\"stylesheet\" href=\"https://cdn.datatables.net/1.10.21/css/jquery.dataTables.min.css\"><link rel=\"stylesheet\" href=\"https://cdn.datatables.net/1.10.21/css/dataTables.bootstrap4.min.css\"></head><body class=\"text-center\"><div class=\"cover-container d-flex h-100 p-3 mx-auto flex-column\"><header class=\"masthead mb-auto\"><div class=\"inner\"><nav class=\"nav nav-masthead justify-content-center\"><a class=\"nav-link\" href=\"index.html\">Shorten</a><a class=\"nav-link\" href=\"remove.html\">Remove</a><a class=\"nav-link\" href=\"list.html\">List</a><a class=\"nav-link active\" href=\"track.html\">Track</a></nav></div></header><main role=\"main\" class=\"inner-cover\"><h1 class=\"cover-heading\">Track URL</h1><p class=\"lead\">Upgrade to the paid version to track the frequency and users of each shortened URL click.</p><form class=\"parameters text-center\"><div class=\"form-group\"><label for=\"inputSlug\" class=\"parameter-label\">URL Slug:</label><input type=\"text\" class=\"form-control\" id=\"inputSlug\" aria-describedby=\"inputSlug\" placeholder=\"Upgrade to the paid version to access additional URL tracking features.\" disabled></div><div class=\"form-group\"><label for=\"inputPassword\" class=\"parameter-label\">API Key:</label><input type=\"password\" class=\"form-control\" id=\"inputPassword\" placeholder=\"Upgrade to the paid version to access additional URL tracking features.\" disabled></div><button type=\"submit\" class=\"btn btn-lg btn-secondary\" id=\"submit-button\" disabled>Track Your URL</button></form><div class=\"response-div\" id=\"response-box\"></div></main><footer class=\"mastfoot mt-auto\"><div class=\"inner\"><p><a href=\"https://aws.amazon.com/marketplace/pp/prodview-y3fqwgluejol6\" title=\"Documentation\" target=\"_blank\">Upgrade</a> to deploy a fully-featured URL shortener.</p><p>Self-Hosted URL Shortener by <a href=\"https://silverlining.cloud\" target=\"_blank\">SilverLining.Cloud</a></p></div></footer></div><script src=\"https://code.jquery.com/jquery-3.3.1.min.js\" crossorigin=\"anonymous\"></script><script src=\"https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js\" crossorigin=\"anonymous\"></script><script src=\"https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js\" crossorigin=\"anonymous\"></script><script src=\"https://cdn.datatables.net/1.10.21/js/jquery.dataTables.min.js\"></script><script src=\"https://cdn.datatables.net/1.10.21/js/dataTables.bootstrap4.min.js\"></script></body></html>'''",
+            "            s3.put_object(Bucket=bucket_name, Key='track.html', Body=track_content, ContentType='text/html')",
+            "            cfnresponse.send(event, context, cfnresponse.SUCCESS, {}, \"CustomResourcePhysicalID\")",
+            "        except Exception as e:",
+            "            print(e)",
+            "            cfnresponse.send(event, context, cfnresponse.FAILED, {}, \"CustomResourcePhysicalID\")",
+            "    cfnresponse.send(event, context, cfnresponse.SUCCESS, {}, \"CustomResourcePhysicalID\")",
+          ]]
+      Runtime: 'python3.12'
+      Timeout: 60
+
+  CustomResource:
+    Type: 'Custom::S3HtmlUpload'
+    Properties:
+      ServiceToken: !GetAtt LambdaFunction.Arn
+      BucketName: !Ref WebsiteBucket
+      ApiUrl: !Sub "https://${ApiGatewayRestApi}.execute-api.${AWS::Region}.amazonaws.com/prod/shorten"
+      ApiUrlRemove: !Sub "https://${ApiGatewayRestApi}.execute-api.${AWS::Region}.amazonaws.com/prod/remove"
+      ApiUrlList: !Sub "https://${ApiGatewayRestApi}.execute-api.${AWS::Region}.amazonaws.com/prod/list"
+
+  CloudFrontDistribution:
+    Type: 'AWS::CloudFront::Distribution'
+    Properties:
+      DistributionConfig:
+        Origins:
+          - Id: 'URL-Shortener-Website'
+            DomainName: !Sub '${WebsiteBucket}.s3-website.${AWS::Region}.amazonaws.com'
+            CustomOriginConfig:
+              HTTPPort: 80
+              HTTPSPort: 443
+              OriginProtocolPolicy: 'http-only'
+        Enabled: true
+        DefaultRootObject: 'index.html'
+        DefaultCacheBehavior:
+          TargetOriginId: 'URL-Shortener-Website'
+          ViewerProtocolPolicy: 'redirect-to-https'
+          AllowedMethods: ['GET', 'HEAD']
+          CachedMethods: ['GET', 'HEAD']
+          ForwardedValues:
+            QueryString: false
+            Cookies:
+              Forward: 'none'
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
+
+
+  UrlShortenFunction:
+    Type: AWS::Lambda::Function
+    Properties: 
+      Handler: index.lambda_handler
+      FunctionName: UrlShortenFunction
+      Role: 
+        Fn::GetAtt: 
+          - LambdaExecutionRole
+          - Arn
+      Code:
+        ZipFile:
+          Fn::Join: ["\n", [
+            "import json",
+            "import os",
+            "import random",
+            "import time",
+            "import string",
+            "from datetime import datetime",
+            "import boto3",
+            "",
+            "def lambda_handler(event, context):",
+            "    try:",
+            "        print(str(event))",
+            "",
+            "        s3_client = boto3.client('s3')",
+            "",
+            "        data = {}",
+            "        if event['body'] == None:",
+            "            raise Exception('No body parameters have been passed')",
+            "        else:",
+            "            try:",
+            "                data = json.loads(event['body'])",
+            "            except Exception as e:",
+            "                raise Exception('Invalid Input: The request contains incorrectly formatted parameters')",
+            "",
+            "        # do input validation",
+            "        if 'longUrl' in data:",
+            "            longUrl = data['longUrl']",
+            "            if 'http://' not in longUrl and 'https://' not in longUrl:",
+            "                raise Exception(\"'longUrl' must have a prefix of 'http://' or 'https://'\")",
+            "        else:",
+            "            raise Exception('No longUrl parameter has been passed')",
+            "",
+            "        bucketName = os.environ['BUCKET_NAME']",
+            "        domainName = os.environ['DOMAIN_NAME']",
+            "",
+            "        while True:",
+            "            randomness = ''.join(random.choices(string.ascii_uppercase + string.ascii_lowercase, k=6))",
+            "            key = randomness",
+            "",
+            "            try:",
+            "                # Try to head object (check if it exists)",
+            "                s3_client.head_object(Bucket=bucketName, Key=key)",
+            "            except s3_client.exceptions.ClientError as e:",
+            "                # If the error code is 404, the object does not exist",
+            "                if e.response['Error']['Code'] == '404':",
+            "                    print(f\"Object with key '{key}' does not exist.\")",
+            "                    break",
+            "                else:",
+            "                    raise Exception('An error occurred while checking if the object exists')",
+            "            else:",
+            "                # If no exception is raised, the object exists",
+            "                print(f\"Object with slug '{key}' already exists.\")",
+            "",
+            "        print('Created redirection with slug: ' + key)",
+            "",
+            "        response = s3_client.put_object(",
+            "            Bucket=bucketName,",
+            "            Key=key,",
+            "            WebsiteRedirectLocation=longUrl,",
+            "        )",
+            "        print(response)",
+            "        time.sleep(0.01)",
+            "        while True:",
+            "            try:",
+            "                s3_client.head_object(Bucket=bucketName, Key=key)",
+            "                break",
+            "            except Exception as e:",
+            "                print('Key not found in S3, retrying in 0.1 seconds')",
+            "                response = s3_client.put_object(",
+            "                    Bucket=bucketName,",
+            "                    Key=key,",
+            "                    WebsiteRedirectLocation=longUrl,",
+            "                )",
+            "                print(response)",
+            "                time.sleep(0.01)",
+            "",
+            "        metadata = {}",
+            "        metadata['longUrl'] = longUrl",
+            "        metadata['slug'] = key",
+            "        metadata['timeCreated'] = datetime.today().strftime('%Y-%m-%d')",
+            "",
+            "        response_dict = {",
+            "            'shortUrl': domainName + '/' + key,",
+            "            'metadata': metadata,",
+            "        }",
+            "        print(str(response_dict))",
+            "",
+            "        return {",
+            "            'statusCode': 200,",
+            "            'headers': {",
+            "                'Access-Control-Allow-Origin': '*',",
+            "            },",
+            "            'body': json.dumps(response_dict),",
+            "        }",
+            "",
+            "    except Exception as e:",
+            "        print(str(e))",
+            "",
+            "        return {",
+            "            'statusCode': 500,",
+            "            'headers': {",
+            "                'Access-Control-Allow-Origin': '*',",
+            "            },",
+            "            'body': json.dumps({",
+            "                'message': str(e),",
+            "            }),",
+            "        }",
+          ]]
+      Runtime: python3.12
+      Timeout: 28
+      MemorySize: 128
+      Environment:
+        Variables:
+          BUCKET_NAME: 
+            Ref: WebsiteBucket
+          DOMAIN_NAME:
+            Fn::GetAtt:
+              - CloudFrontDistribution
+              - DomainName
+
+  UrlRemoveFunction:
+    Type: AWS::Lambda::Function
+    Properties: 
+      Handler: index.lambda_handler
+      FunctionName: UrlRemoveFunction
+      Role: 
+        Fn::GetAtt: 
+          - LambdaExecutionRole
+          - Arn
+      Code:
+        ZipFile:
+          Fn::Join: ["\n", [
+            "import json, os",
+            "import boto3",
+            "from botocore.exceptions import ClientError",
+            "",
+            "def lambda_handler(event, context):",
+            "    try:",
+            "        print(str(event))",
+            "",
+            "        s3_client = boto3.client('s3')",
+            "        cloudfront_client = boto3.client('cloudfront')",
+            "",
+            "        data = {}",
+            "        if event['body'] == None:",
+            "            raise Exception('No body parameters have been passed')",
+            "        else:",
+            "            try:",
+            "                data = json.loads(event['body'])",
+            "            except Exception as e:",
+            "                raise Exception('Invalid Input: The request contains incorrectly formatted parameters')",
+            "",
+            "        # do input validation",
+            "        if 'slug' in data:",
+            "            key = data['slug']",
+            "        else:",
+            "            raise Exception('No slug parameter has been passed')",
+            "",
+            "        bucketName = os.environ['BUCKET_NAME']",
+            "        cloudfront_id = os.environ['CLOUDFRONT_ID']",
+            "",
+            "        try:",
+            "            # Try to head object (check if it exists)",
+            "            s3_client.head_object(Bucket=bucketName, Key=key)",
+            "        except ClientError as e:",
+            "            # If the error code is 404, the object does not exist",
+            "            if e.response['Error']['Code'] == '404':",
+            "                raise Exception('Given short URL does not exist')",
+            "            else:",
+            "                # Re-raise any other exception",
+            "                raise Exception('An error occurred while checking if the object exists')",
+            "",
+            "        # Delete shortUrl",
+            "        response = s3_client.delete_object(",
+            "            Bucket=bucketName,",
+            "            Key=key,",
+            "        )",
+            "",
+            "        # Remove from Cloudfront CDN cache",
+            "        response = cloudfront_client.create_invalidation(",
+            "            DistributionId=cloudfront_id,",
+            "            InvalidationBatch={",
+            "                'Paths': {",
+            "                    'Quantity': 1,",
+            "                    'Items': [",
+            "                        '/'+key,",
+            "                    ]",
+            "                },",
+            "                'CallerReference': key",
+            "            }",
+            "        )",
+            "",
+            "        response_dict = {",
+            "            'message': 'Provided URL has been removed',",
+            "        }",
+            "",
+            "        return {",
+            "            'statusCode': 200,",
+            "            'headers': {",
+            "                'Access-Control-Allow-Origin': '*',",
+            "            },",
+            "            'body': json.dumps(response_dict),",
+            "        }",
+            "",
+            "    except Exception as e:",
+            "        print(str(e))",
+            "",
+            "        return {",
+            "            'statusCode': 500,",
+            "            'headers': {",
+            "                'Access-Control-Allow-Origin': '*',",
+            "            },",
+            "            'body': json.dumps({",
+            "                'message': str(e),",
+            "            }),",
+            "        }",
+          ]]
+      Runtime: python3.12
+      Timeout: 28
+      MemorySize: 128
+      Environment:
+        Variables:
+          BUCKET_NAME: 
+            Ref: WebsiteBucket
+          CLOUDFRONT_ID:
+            Ref: CloudFrontDistribution
+
+  UrlListFunction:
+    Type: AWS::Lambda::Function
+    Properties: 
+      Handler: index.lambda_handler
+      FunctionName: UrlListFunction
+      Role: 
+        Fn::GetAtt: 
+          - LambdaExecutionRole
+          - Arn
+      Code:
+        ZipFile:
+          Fn::Join: ["\n", [
+            "import json, os",
+            "import boto3",
+            "",
+            "def lambda_handler(event, context):",
+            "    try:",
+            "        print(str(event))",
+            "",
+            "        s3_client = boto3.client('s3')",
+            "        bucket_name = os.environ['BUCKET_NAME']",
+            "",
+            "        def list_all_objects(bucket_name):",
+            "            paginator = s3_client.get_paginator('list_objects_v2')",
+            "            all_objects = []",
+            "",
+            "            for page in paginator.paginate(Bucket=bucket_name):",
+            "                if 'Contents' in page:",
+            "                    all_objects.extend(page['Contents'])",
+            "",
+            "            return all_objects",
+            "",
+            "        def filter_objects(objects):",
+            "            exclude_patterns = {'index.html', 'error.html', 'list.html', 'track.html', 'remove.html', 'cover.css'}",
+            "            filtered_objects = [obj for obj in objects if not any(pattern in obj['Key'] for pattern in exclude_patterns)]",
+            "",
+            "            return filtered_objects",
+            "",
+            "        def get_object_metadata(bucket_name, key):",
+            "            response = s3_client.head_object(Bucket=bucket_name, Key=key)",
+            "            return response.get('ResponseMetadata', {}).get('HTTPHeaders', {}).get('x-amz-website-redirect-location', None)",
+            "",
+            "        def transform_objects(objects, bucket_name):",
+            "            items = []",
+            "            for obj in objects:",
+            "                metadata = get_object_metadata(bucket_name, obj['Key'])",
+            "                item = {",
+            "                    'slug': obj['Key'],",
+            "                    'longUrl': metadata,",
+            "                    'timeCreated': obj['LastModified'].isoformat()[:10]",
+            "                }",
+            "                items.append(item)",
+            "",
+            "            return {'items': items}",
+            "",
+            "        objects = list_all_objects(bucket_name)",
+            "        filtered_objects = filter_objects(objects)",
+            "        result_dict = transform_objects(filtered_objects, bucket_name)",
+            "",
+            "        print(result_dict)",
+            "",
+            "        return {",
+            "            'statusCode': 200,",
+            "            'headers': {",
+            "                'Access-Control-Allow-Origin': '*',",
+            "            },",
+            "            'body': json.dumps(result_dict),",
+            "        }",
+            "",
+            "    except Exception as e:",
+            "        print(str(e))",
+            "",
+            "        return {",
+            "            'statusCode': 500,",
+            "            'headers': {",
+            "                'Access-Control-Allow-Origin': '*',",
+            "            },",
+            "            'body': json.dumps({",
+            "                'message': str(e),",
+            "            }),",
+            "        }",
+          ]]
+      Runtime: python3.12
+      Timeout: 28
+      MemorySize: 128
+      Environment:
+        Variables:
+          BUCKET_NAME: 
+            Ref: WebsiteBucket
+
+
+
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: 
+                - lambda.amazonaws.com
+            Action: 
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: UrlShortenerExecutionPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: 
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - s3:PutObject
+                  - s3:GetObject
+                  - s3:HeadObject
+                  - s3:ListBucket
+                  - s3:DeleteObject
+                  - s3:ListObjectsV2
+                  - cloudfront:CreateInvalidation
+                Resource:
+                  - !Sub 'arn:${AWS::Partition}:logs:*:*:*'
+                  - !Sub 'arn:${AWS::Partition}:s3:::url-shortener-website-${AWS::AccountId}/*'
+                  - !Sub 'arn:${AWS::Partition}:s3:::url-shortener-website-${AWS::AccountId}'
+                  - !Sub 'arn:${AWS::Partition}:cloudfront:*:${AWS::AccountId}:distribution/*'
+
+
+
+  ApiGatewayRestApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: UrlShortenerApi
+      Description: REST API for URL Shortener
+
+  ApiGatewayResource1:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId: 
+        Fn::GetAtt: 
+          - ApiGatewayRestApi
+          - RootResourceId
+      PathPart: shorten
+      RestApiId: 
+        Ref: ApiGatewayRestApi
+
+  ApiGatewayMethod1:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      ApiKeyRequired: true
+      HttpMethod: POST
+      ResourceId: 
+        Ref: ApiGatewayResource1
+      RestApiId: 
+        Ref: ApiGatewayRestApi
+      Integration:
+        IntegrationHttpMethod: POST
+        Type: AWS_PROXY
+        Uri:
+          Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${UrlShortenFunction.Arn}/invocations
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              method.response.header.Access-Control-Allow-Methods: "'POST,OPTIONS'"
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Origin: true
+
+  ApiGatewayMethod1Options:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      HttpMethod: OPTIONS
+      ResourceId:
+        Ref: ApiGatewayResource1
+      RestApiId:
+        Ref: ApiGatewayRestApi
+      Integration:
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              method.response.header.Access-Control-Allow-Methods: "'POST,OPTIONS'"
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        IntegrationHttpMethod: POST
+        Type: MOCK
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Origin: true
+
+
+  LambdaPermission1:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: 
+        Ref: UrlShortenFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: 
+        Fn::Sub: arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApi}/*/POST/shorten
+
+
+  ApiGatewayResource2:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId: 
+        Fn::GetAtt: 
+          - ApiGatewayRestApi
+          - RootResourceId
+      PathPart: remove
+      RestApiId: 
+        Ref: ApiGatewayRestApi
+
+  ApiGatewayMethod2:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      ApiKeyRequired: true
+      HttpMethod: POST
+      ResourceId: 
+        Ref: ApiGatewayResource2
+      RestApiId: 
+        Ref: ApiGatewayRestApi
+      Integration:
+        IntegrationHttpMethod: POST
+        Type: AWS_PROXY
+        Uri:
+          Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${UrlRemoveFunction.Arn}/invocations
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              method.response.header.Access-Control-Allow-Methods: "'POST,OPTIONS'"
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Origin: true
+
+
+  ApiGatewayMethod2Options:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      HttpMethod: OPTIONS
+      ResourceId:
+        Ref: ApiGatewayResource2
+      RestApiId:
+        Ref: ApiGatewayRestApi
+      Integration:
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              method.response.header.Access-Control-Allow-Methods: "'POST,OPTIONS'"
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        IntegrationHttpMethod: POST
+        Type: MOCK
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Origin: true
+
+  LambdaPermission2:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: 
+        Ref: UrlRemoveFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: 
+        Fn::Sub: arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApi}/*/POST/remove
+
+  ApiGatewayResource3:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId: 
+        Fn::GetAtt: 
+          - ApiGatewayRestApi
+          - RootResourceId
+      PathPart: list
+      RestApiId: 
+        Ref: ApiGatewayRestApi
+
+  ApiGatewayMethod3:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      ApiKeyRequired: true
+      HttpMethod: POST
+      ResourceId: 
+        Ref: ApiGatewayResource3
+      RestApiId: 
+        Ref: ApiGatewayRestApi
+      Integration:
+        IntegrationHttpMethod: POST
+        Type: AWS_PROXY
+        Uri:
+          Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${UrlListFunction.Arn}/invocations
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              method.response.header.Access-Control-Allow-Methods: "'POST,OPTIONS'"
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Origin: true
+
+
+  ApiGatewayMethod3Options:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      HttpMethod: OPTIONS
+      ResourceId:
+        Ref: ApiGatewayResource3
+      RestApiId:
+        Ref: ApiGatewayRestApi
+      Integration:
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              method.response.header.Access-Control-Allow-Methods: "'POST,OPTIONS'"
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        IntegrationHttpMethod: POST
+        Type: MOCK
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Origin: true
+
+  LambdaPermission3:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: 
+        Ref: UrlListFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: 
+        Fn::Sub: arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApi}/*/POST/list
+
+
+  ApiGatewayDeployment:
+    Type: 'AWS::ApiGateway::Deployment'
+    Properties:
+      RestApiId: !Ref ApiGatewayRestApi
+      StageName: prod
+    DependsOn: 
+      - ApiGatewayMethod1
+      - ApiGatewayMethod2
+      - ApiGatewayMethod3
+
+  ApiGatewayUsagePlan:
+    Type: AWS::ApiGateway::UsagePlan
+    DependsOn: ApiGatewayDeployment
+    Properties:
+      UsagePlanName: UrlShortenerApiUsagePlan
+      Description: Usage plan for the URL Shortener API
+      ApiStages:
+        - ApiId: 
+            Ref: ApiGatewayRestApi
+          Stage: prod
+
+  ApiGatewayApiKey:
+    Type: AWS::ApiGateway::ApiKey
+    DependsOn: ApiGatewayDeployment
+    Properties:
+      Name: UrlShortenerApiKey
+      Enabled: true
+      StageKeys:
+        - RestApiId: 
+            Ref: ApiGatewayRestApi
+          StageName: prod
+
+  ApiGatewayUsagePlanKey:
+    Type: AWS::ApiGateway::UsagePlanKey
+    Properties:
+      KeyId: 
+        Ref: ApiGatewayApiKey
+      KeyType: API_KEY
+      UsagePlanId: 
+        Ref: ApiGatewayUsagePlan
+
+Outputs:
+  WebsiteURL:
+    Description: 'URL for the website hosted on S3'
+    Value: !Sub 'http://${WebsiteBucket}.s3-website-${AWS::Region}.amazonaws.com'
+  ApiGatewayURL:
+    Description: 'URL for the API Gateway'
+    Value: !Sub 'https://${ApiGatewayRestApi}.execute-api.${AWS::Region}.amazonaws.com/prod'
+  ApiKey:
+    Description: 'API Key for the API Gateway'
+    Value: !Ref ApiGatewayApiKey
