@@ -27,6 +27,7 @@
 You can explore a demo deployment of the paid commercial version at [self.aws3-demo.link](https://self.aws3-demo.link). Use the following API key to access it:
 
 **API Key**: `7DRpNbuO5e8Tk37WiJmjB4ILH8kkYcOF7l6eldD5`
+![Demo Image](https://cdn.silverlining.cloud/cloudformation-url-shortener/aws3-self-hosted.png)
 
 ## Commercial Version
 
