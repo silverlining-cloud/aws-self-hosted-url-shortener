@@ -4,6 +4,24 @@
 
 ![Infrastructure Diagram](https://cdn.silverlining.cloud/cloudformation-url-shortener/aws-self-hosted-url-shortener-github.png)
 
+## Commercial Version
+
+### Paid Version
+
+In addition to our free Infrastructure-as-a-Service (IaaS) stack, we offer a paid version that includes enhanced features such as:
+
+- **Custom URL Slug Modification**: Personalize your links for better branding and recognition.
+- **Link Expiration**: Set links to expire after a certain time or after a specified number of clicks.
+- **Click Tracking**: Monitor who clicked your links and when they were clicked.
+
+Purchase our paid version directly from the AWS Marketplace: [AWS Marketplace - Paid Version](https://aws.amazon.com/marketplace/pp/prodview-y3fqwgluejol6)
+
+### Software as a Service (SaaS)
+
+Avoid the hassle of hosting by using our SaaS URL Shortener service. Our fully Pay-As-You-Go pricing model ensures you only pay for what you use, at just **USD 0.004 per shortened link**. There are no additional costs for contracts or link traffic.
+
+Subscribe now: [AWS Marketplace - SaaS URL Shortener](https://aws.amazon.com/marketplace/pp/prodview-aduakv5eklenq)
+
 ## Feature Comparision
 
 | Feature                                           | Free IaaS | Paid IaaS | SaaS |
